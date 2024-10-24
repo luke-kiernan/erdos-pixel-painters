@@ -1,6 +1,6 @@
 import torchvision.transforms as transforms
 import warnings
-from skimage import color
+from kornia import color
 
 transform_basic = transforms.Compose([
     transforms.ToTensor(),
@@ -37,18 +37,20 @@ class ConvertColorTransform(object):
         def validate_space(space):
             if space.lower() not in ['rgb', 'lab', 'gray', 'luv', 'xyz', 'hsv']:
                 warnings.warn(f"colorspace {space} not recognized, defaulting to rgb")
-                return 'rgb'
+                return 'Rgb'
             else:
-                return space.lower()
+                return space.lower().capitalize()
         fromspace = validate_space(fromspace)
         tospace = validate_space(tospace)
-        if hasattr(color, f"{fromspace}2{tospace}"):
-            self.transform = getattr(color, f"{fromspace}2{tospace}")
+        if hasattr(color, f"{fromspace}To{tospace}"):
+            self.transform = getattr(color, f"{fromspace}To{tospace}")
         else:
+            self.transform = None
             warnings.warn("Compatible color conversion not found.")
-            self.transform = lambda x:x
     def __call__(self, arr):
-        return self.transform(arr)
+        if self.transform is None:
+            return arr
+        return self.transform()(arr)
 
 def getTransform_in(CONFIG):
     if "IN_COLORMAP" in CONFIG.keys():
@@ -73,11 +75,9 @@ def getTransform_out(CONFIG):
             return transform_Img
         elif CONFIG["OUT_COLORMAP"].lower() in ['lab', 'luv', 'xyz', 'hsv']:
             outType = CONFIG["OUT_COLORMAP"].lower()
-            return transforms.Compose([transforms.ToPILImage(),
-                                   ConvertColorTransform('rgb', outType),
-                                   transforms.ToTensor(dtype='float32'),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                    transforms.Resize((32,32))])
+            return transforms.Compose([transforms.ToTensor(),
+                ConvertColorTransform('rgb', outType),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         else: 
             warnings.warn("OUT_COLORMAP not recognized. Using default RGB")
             return transform_basic
