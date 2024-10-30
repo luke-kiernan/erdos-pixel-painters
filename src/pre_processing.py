@@ -1,6 +1,7 @@
 import torchvision.transforms as transforms
 import warnings
 from kornia import color
+from math import pi
 
 transform_basic = transforms.Compose([
     transforms.ToTensor(),
@@ -75,9 +76,21 @@ def getTransform_out(CONFIG):
             return transform_Img
         elif CONFIG["OUT_COLORMAP"].lower() in ['lab', 'luv', 'xyz', 'hsv']:
             outType = CONFIG["OUT_COLORMAP"].lower()
+            # using "Colorful Image Colorization" moralization for LAB and LUV
+            # HSV is [0, 2*pi]x[0,1]^2. These ranges are specific to Kornia: openCV uses H in [0,180]
+            #                           Also, there is no "middle" H bc it's a circle.
+            mean, stddev = {
+                'lab':((50,0,0),(100,110,110)),
+                'luv':((50,0,0),(100,100,100)),
+                'xyz':((0.5,0.5,0.5),(0.5,0.5,0.5)),
+                'hsv':((pi,0.5,0.5),(2*pi,0.5,0.5))
+            }[outType]
+            if outType == 'hsv':
+                warnings.warn("Normalization and distance for HSV may be incorrect on the H coordinate.",
+                        "Treating cylindrical space like a product of intervals.")
             return transforms.Compose([transforms.ToTensor(),
                 ConvertColorTransform('rgb', outType),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                transforms.Normalize(mean, stddev)])
         else: 
             warnings.warn("OUT_COLORMAP not recognized. Using default RGB")
             return transform_basic
