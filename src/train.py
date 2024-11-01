@@ -43,6 +43,8 @@ def fetch_scheduler(optimizer, CONFIG):
     return scheduler
 
 def criterion(outputs, targets, CONFIG):
+    if CONFIG['model_params']['out_channels'] ==2:
+        targets = targets[:,1:,:,:]
     if CONFIG['loss'] == 'MSE' or CONFIG['loss'] == None:
         return nn.MSELoss()(outputs, targets)
     elif CONFIG['loss'] == 'BCE':
