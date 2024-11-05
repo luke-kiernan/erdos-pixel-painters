@@ -29,8 +29,8 @@ class BuildImageDataset(Dataset):
         img, _  = self.image_data[idx]
         if self.transform_in:
             input_image = self.transform_in(img)
-        #if self.transform_out:
-        target_image = transforms.ToTensor()(img)
+        if self.transform_out:
+            target_image = self.transform_out(img)
         plt.figure(figsize=(upscaling_factor, upscaling_factor))
         plt.subplot(1, 2, 1)
         if input_image.shape[0] == 1:

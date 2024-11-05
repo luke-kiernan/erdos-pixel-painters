@@ -7,14 +7,14 @@ transform_basic = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     #Resizing to 32x32
-    transforms.Resize((32,32))
+    #transforms.Resize((32,32))
 ])
 #Normalize to ImageNet values 
 transform_Img = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     #Resizing to 256x256
-    transforms.Resize((256,256))
+    #transforms.Resize((256,256))
 ])
 
 
@@ -30,7 +30,7 @@ transform_Img_grayscale = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,)),
     #Resizing to 256x256
-    transforms.Resize((256,256))
+    #transforms.Resize((256,256))
 ])
 
 class ConvertColorTransform(object):
@@ -54,26 +54,36 @@ class ConvertColorTransform(object):
         return self.transform()(arr)
 
 def getTransform_in(CONFIG):
+    transform_in = None
     if "IN_COLORMAP" in CONFIG.keys():
         if CONFIG["IN_COLORMAP"] == "GRAY":
-            #Resizing to 32x32
-            return transform_basic_grayscale
+            transform_in = transform_basic_grayscale
         elif CONFIG["IN_COLORMAP"] == "GRAY_IMG":
-            #Resizing to 256x256
-            return transform_Img_grayscale
+            transform_in = transform_Img_grayscale
         else:
             warnings.warn("IN_COLORMAP not recognized. Using default grayscale")
-            return transform_basic_grayscale
+            transform_in = transform_basic_grayscale
     else:
         warnings.warn("IN_COLORMAP not specified. Using default grayscale")
-        return transform_basic_grayscale
+        transform_in = transform_basic_grayscale
+
+    if "IMG_RESIZE" in CONFIG.keys():
+        #if it is int, resize to that size
+        if type(CONFIG["IMG_RESIZE"]) == int:
+            transform_in.transforms.append(transforms.Resize((CONFIG["IMG_RESIZE"],CONFIG["IMG_RESIZE"])))
+        elif type(CONFIG["IMG_RESIZE"]) == tuple:
+            transform_in.transforms.append(transforms.Resize(CONFIG["IMG_RESIZE"]))
+        else :
+            warnings.warn("IMG_RESIZE was not recognized. Not resizing input transform.")
+    return transform_in
 
 def getTransform_out(CONFIG):
+    transform_out = None
     if "OUT_COLORMAP" in CONFIG.keys():
         if CONFIG["OUT_COLORMAP"] == "RGB":
-            return transform_basic
+            transform_out =  transform_basic
         elif CONFIG["OUT_COLORMAP"] == "RGB_IMG":
-            return transform_Img
+            transform_out =  transform_Img
         elif CONFIG["OUT_COLORMAP"].lower() in ['lab', 'luv', 'xyz', 'hsv']:
             outType = CONFIG["OUT_COLORMAP"].lower()
             # using "Colorful Image Colorization" moralization for LAB and LUV
@@ -88,14 +98,24 @@ def getTransform_out(CONFIG):
             if outType == 'hsv':
                 warnings.warn("Normalization and distance for HSV may be incorrect on the H coordinate.",
                         "Treating cylindrical space like a product of intervals.")
-            return transforms.Compose([transforms.ToTensor(),
+            transform_out =  transforms.Compose([transforms.ToTensor(),
                 ConvertColorTransform('rgb', outType),
                 transforms.Normalize(mean, stddev)])
         else: 
             warnings.warn("OUT_COLORMAP not recognized. Using default RGB")
-            return transform_basic
+            transform_out =  transform_basic
     else:
         warnings.warn("OUT_COLORMAP not specified. Using default RGB")
-        return transform_basic
+        transform_out =  transform_basic
+
+    if "IMG_RESIZE" in CONFIG.keys():
+        #if it is int, resize to that size
+        if type(CONFIG["IMG_RESIZE"]) == int:
+            transform_out.transforms.append(transforms.Resize((CONFIG["IMG_RESIZE"],CONFIG["IMG_RESIZE"])))
+        elif type(CONFIG["IMG_RESIZE"]) == tuple:
+            transform_out.transforms.append(transforms.Resize(CONFIG["IMG_RESIZE"]))
+        else :
+            warnings.warn("IMG_RESIZE was not recognized. Not resizing output transform.")
+    return transform_out
 
     
